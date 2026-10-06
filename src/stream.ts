@@ -36,6 +36,7 @@ import {
   type KiroUserInputMessage,
   normalizeMessages,
   parseToolArgs,
+  resolveSystemContext,
   TOOL_RESULT_LIMIT,
   truncate,
 } from "./transform";
@@ -336,6 +337,9 @@ export function streamKiro(
       // redacted ThinkingContent shim so downstream UIs can show a
       // "reasoning hidden" marker via the standard pi-ai contract.
       const reasoningHidden = !!(model as KiroModel).reasoningHidden;
+      // Fold transcript `role: "system"` messages (pi >= 1.0) and the legacy
+      // context.systemPrompt/tools fields into one prompt + tool set.
+      const resolved = resolveSystemContext(context);
 
       log.debug("request.init", {
         endpoint,
@@ -345,14 +349,14 @@ export function streamKiro(
         thinkingEnabled,
         reasoningHidden,
         reasoning: options?.reasoning,
-        messageCount: context.messages.length,
-        toolCount: context.tools?.length ?? 0,
-        hasSystemPrompt: !!context.systemPrompt,
+        messageCount: resolved.messages.length,
+        toolCount: resolved.tools.length,
+        hasSystemPrompt: !!resolved.systemPrompt,
         profileArn,
         sessionId: options?.sessionId,
       });
 
-      let systemPrompt = context.systemPrompt ?? "";
+      let systemPrompt = resolved.systemPrompt;
       // Skip the `<thinking_mode>` directive when the provider hides
       // reasoning — the directive is a no-op there and costs prompt tokens.
       if (thinkingEnabled && !reasoningHidden) {
@@ -375,7 +379,7 @@ export function streamKiro(
       while (retryCount <= MAX_RETRIES) {
         if (options?.signal?.aborted) throw options.signal.reason;
 
-        const normalized = normalizeMessages(context.messages);
+        const normalized = normalizeMessages(resolved.messages);
         const {
           history,
           systemPrepended,
@@ -480,11 +484,11 @@ export function streamKiro(
         }
 
         let uimc: { toolResults?: KiroToolResult[]; tools?: KiroToolSpec[] } | undefined;
-        if (currentToolResults.length > 0 || (context.tools && context.tools.length > 0)) {
+        if (currentToolResults.length > 0 || resolved.tools.length > 0) {
           uimc = {};
           if (currentToolResults.length > 0) uimc.toolResults = currentToolResults;
-          if (context.tools?.length) {
-            uimc.tools = convertToolsToKiro(context.tools);
+          if (resolved.tools.length > 0) {
+            uimc.tools = convertToolsToKiro(resolved.tools);
           }
         }
 

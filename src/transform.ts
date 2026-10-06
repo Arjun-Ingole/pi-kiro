@@ -26,6 +26,76 @@ export function normalizeMessages(messages: Message[]): Message[] {
   );
 }
 
+/**
+ * Shape of the `role: "system"` transcript message introduced in newer
+ * pi-ai versions (pi >= 1.0). Declared locally because the pinned pi-ai
+ * devDep predates it.
+ */
+interface TranscriptSystemMessage {
+  role: "system";
+  content: string | Array<{ type: string; text?: string }>;
+  sections?: Record<string, string | null>;
+  toolsAdded?: Tool[];
+  toolsRemoved?: Array<{ name: string }>;
+}
+
+function isSystemMessage(msg: unknown): msg is TranscriptSystemMessage {
+  return (msg as { role?: string } | undefined)?.role === "system";
+}
+
+function systemContentText(content: TranscriptSystemMessage["content"]): string {
+  if (typeof content === "string") return content;
+  return content
+    .filter((b) => b.type === "text" && typeof b.text === "string")
+    .map((b) => b.text as string)
+    .join("\n");
+}
+
+/**
+ * Resolve the effective system prompt, tool list and non-system messages.
+ *
+ * Newer pi versions carry the prompt and tools as `role: "system"` messages
+ * in the transcript (leading message = base prompt; later ones append
+ * content, patch named sections, add/remove tools). Older versions use
+ * `context.systemPrompt` / `context.tools`. Kiro has no system role, so we
+ * replay every system message into a single prompt + tool set and strip
+ * them from the message list — otherwise they'd fall through to the
+ * tool-result branch of buildHistory and produce an invalid request.
+ */
+export function resolveSystemContext(context: {
+  systemPrompt?: string;
+  tools?: Tool[];
+  messages: Message[];
+}): { systemPrompt: string; tools: Tool[]; messages: Message[] } {
+  const contentParts: string[] = [];
+  const sections = new Map<string, string>();
+  const tools = new Map<string, Tool>();
+
+  if (context.systemPrompt) contentParts.push(context.systemPrompt);
+  for (const t of context.tools ?? []) tools.set(t.name, t);
+
+  const messages: Message[] = [];
+  for (const msg of context.messages as unknown[]) {
+    if (!isSystemMessage(msg)) {
+      messages.push(msg as Message);
+      continue;
+    }
+    const text = systemContentText(msg.content);
+    if (text.length > 0) contentParts.push(text);
+    for (const [name, value] of Object.entries(msg.sections ?? {})) {
+      if (value === null) sections.delete(name);
+      else sections.set(name, value);
+    }
+    for (const t of msg.toolsRemoved ?? []) tools.delete(t.name);
+    for (const t of msg.toolsAdded ?? []) tools.set(t.name, t);
+  }
+
+  const systemPrompt = [...contentParts, ...sections.values()]
+    .filter((p) => p.length > 0)
+    .join("\n\n");
+  return { systemPrompt, tools: [...tools.values()], messages };
+}
+
 // ---- Kiro wire format --------------------------------------------------
 
 export interface KiroImage {

@@ -13,6 +13,7 @@ import {
   convertToolsToKiro,
   getContentText,
   normalizeMessages,
+  resolveSystemContext,
   TOOL_RESULT_LIMIT,
   truncate,
 } from "../src/transform";
@@ -244,5 +245,30 @@ describe("buildHistory", () => {
     const msgs: Message[] = [user("q"), a, user("followup")];
     const { history } = buildHistory(msgs, "M");
     expect(history.find((h) => h.assistantResponseMessage)).toBeUndefined();
+  });
+});
+
+describe("resolveSystemContext", () => {
+  const tool = (name: string) =>
+    ({ name, description: name, parameters: { type: "object", properties: {} } }) as unknown as Tool;
+
+  it("passes legacy systemPrompt/tools through unchanged", () => {
+    const user: UserMessage = { role: "user", content: "hi", timestamp: ts };
+    const r = resolveSystemContext({ systemPrompt: "sys", tools: [tool("a")], messages: [user] });
+    expect(r.systemPrompt).toBe("sys");
+    expect(r.tools.map((t) => t.name)).toEqual(["a"]);
+    expect(r.messages).toEqual([user]);
+  });
+
+  it("replays system messages: content, sections and tool add/remove", () => {
+    const messages = [
+      { role: "system", content: "base", sections: { env: "<env>1</env>" }, toolsAdded: [tool("a"), tool("b")], timestamp: 0 },
+      { role: "user", content: "hi", timestamp: ts },
+      { role: "system", content: [{ type: "text", text: "more" }], sections: { env: "<env>2</env>" }, toolsRemoved: [{ name: "a" }], timestamp: ts },
+    ] as unknown as Message[];
+    const r = resolveSystemContext({ messages });
+    expect(r.systemPrompt).toBe("base\n\nmore\n\n<env>2</env>");
+    expect(r.tools.map((t) => t.name)).toEqual(["b"]);
+    expect(r.messages.map((m) => m.role)).toEqual(["user"]);
   });
 });

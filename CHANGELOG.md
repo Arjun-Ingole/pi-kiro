@@ -9,6 +9,12 @@
 - Point `pi.extensions` at `./src/extension.ts` so the package can be
   installed straight from git (`pi install git:github.com/...`) without
   a build step; `dist/` is gitignored.
+- Fix `400 Invalid tool use format` on every request under pi >= 1.0.
+  pi now sends the system prompt and tools as `role: "system"` transcript
+  messages; these fell through to the tool-result branch and became an
+  empty tool result with no `toolUseId`. They're now replayed into a
+  single prompt + tool set (`resolveSystemContext`), with the legacy
+  `context.systemPrompt` / `context.tools` fields still supported.
 
 ## 0.1.3
 

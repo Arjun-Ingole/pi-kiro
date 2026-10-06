@@ -216,6 +216,28 @@ describe("streamKiro", () => {
     expect(body.agentMode).toBe("vibe");
   });
 
+  it("folds transcript system messages (pi >= 1.0) into the prompt and tools", async () => {
+    const fetchMock = mockFetchOk('{"content":"Hi"}{"contextUsagePercentage":5}');
+    vi.stubGlobal("fetch", fetchMock);
+    const tool = {
+      name: "read",
+      description: "Read a file",
+      parameters: { type: "object", properties: {} },
+    };
+    const context = {
+      messages: [
+        { role: "system", content: "Base prompt", toolsAdded: [tool], timestamp: 0 },
+        { role: "user", content: "Hello", timestamp: Date.now() },
+      ],
+    } as unknown as Context;
+    await collect(streamKiro(makeModel(), context, { apiKey: "tok" }));
+    const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    const uim = body.conversationState.currentMessage.userInputMessage;
+    expect(body.conversationState.history).toBeUndefined();
+    expect(uim.content).toBe("Base prompt\n\nHello");
+    expect(uim.userInputMessageContext.tools[0].toolSpecification.name).toBe("read");
+  });
+
   it("injects thinking mode tags when reasoning is enabled", async () => {
     const fetchMock = mockFetchOk('{"content":"Hi"}{"contextUsagePercentage":5}');
     vi.stubGlobal("fetch", fetchMock);
