@@ -9,7 +9,7 @@
   },
   "keywords": ["pi-package"],
   "pi": {
-    "extensions": ["./dist/extension.js"]
+    "extensions": ["./src/extension.ts"]
   },
   "main": "./dist/extension.js",
   "types": "./dist/extension.d.ts",
@@ -25,6 +25,7 @@
   },
   "files": [
     "dist",
+    "src",
     "README.md",
     "CHANGELOG.md"
   ],

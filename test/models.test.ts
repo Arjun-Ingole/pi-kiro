@@ -14,6 +14,18 @@ describe("resolveKiroModel", () => {
     expect(resolveKiroModel("glm-4-7-flash")).toBe("glm-4.7-flash");
   });
 
+  it("resolves the 2026 model additions to their Kiro API IDs", () => {
+    expect(resolveKiroModel("claude-opus-5-5")).toBe("claude-opus-5.5");
+    expect(resolveKiroModel("claude-sonnet-5-5")).toBe("claude-sonnet-5.5");
+    expect(resolveKiroModel("claude-opus-5")).toBe("claude-opus-5");
+    expect(resolveKiroModel("claude-sonnet-5")).toBe("claude-sonnet-5");
+    expect(resolveKiroModel("claude-opus-4-8")).toBe("claude-opus-4.8");
+    expect(resolveKiroModel("gpt-5-6-sol")).toBe("gpt-5.6-sol");
+    expect(resolveKiroModel("gpt-5-6-terra")).toBe("gpt-5.6-terra");
+    expect(resolveKiroModel("gpt-5-6-luna")).toBe("gpt-5.6-luna");
+    expect(resolveKiroModel("glm-5")).toBe("glm-5");
+  });
+
   it("preserves IDs without digit-dash-digit patterns", () => {
     expect(resolveKiroModel("auto")).toBe("auto");
     expect(resolveKiroModel("qwen3-coder-next")).toBe("qwen3-coder-next");
@@ -57,6 +69,14 @@ describe("filterModelsByRegion", () => {
     const r = filterModelsByRegion(kiroModels, "us-east-1");
     expect(r.length).toBeGreaterThan(0);
     expect(r.find((m) => m.id === "claude-opus-4-7")).toBeDefined();
+  });
+
+  it("exposes Opus 5.5 and Sonnet 5.5 in both US and EU", () => {
+    for (const region of ["us-east-1", "eu-central-1"]) {
+      const ids = filterModelsByRegion(kiroModels, region).map((m) => m.id);
+      expect(ids).toContain("claude-opus-5-5");
+      expect(ids).toContain("claude-sonnet-5-5");
+    }
   });
 
   it("returns a narrower subset for eu-central-1", () => {

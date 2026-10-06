@@ -11,6 +11,12 @@ to pi's coding agent.
 pi install npm:pi-kiro
 ```
 
+Or straight from this fork (includes the latest model catalog):
+
+```bash
+pi install git:github.com/Arjun-Ingole/pi-kiro
+```
+
 ## Login
 
 ```bash
@@ -29,11 +35,13 @@ Tokens are stored in `~/.pi/agent/auth.json`.
 
 ## Supported models
 
-All Claude models available through the Kiro service, including:
+All models available through the Kiro service, including:
 
-- `claude-sonnet-4-5`
-- `claude-sonnet-4-6`
-- `claude-opus-4-7`
+- `claude-opus-5-5`, `claude-sonnet-5-5`
+- `claude-opus-5`, `claude-sonnet-5`, `claude-opus-4-8`
+- `claude-opus-4-7`, `claude-sonnet-4-6`, `claude-sonnet-4-5`
+- `gpt-5-6-sol`, `gpt-5-6-terra`, `gpt-5-6-luna`
+- `glm-5`
 
 Run `pi --list-models` for the full list once the extension is loaded.
 

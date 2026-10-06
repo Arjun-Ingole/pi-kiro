@@ -1,6 +1,7 @@
 // pi-kiro extension entry point.
 //
-// Referenced from package.json: "pi": { "extensions": ["./dist/extension.js"] }.
+// Referenced from package.json: "pi": { "extensions": ["./src/extension.ts"] }.
+// pi loads TypeScript directly (via jiti), so git installs work without a build step.
 // Called once by pi at startup; registers the kiro provider with its model
 // catalog, OAuth login, and custom streaming handler.
 //
